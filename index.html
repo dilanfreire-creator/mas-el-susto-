@@ -1,0 +1,94 @@
+<!DOCTYPE html><html lang="es">
+<head>
+<meta charset="UTF-8">
+<title>Monitoreo DS18B20 BLE</title>
+<style>
+    body {
+        font-family: Arial, sans-serif;
+        background: #f3f3f3;
+        padding: 20px;
+        text-align: center;
+    }
+    h1 {
+        color: #333;
+    }
+    .sensor-box {
+        width: 250px;
+        margin: auto;
+        padding: 15px;
+        background: white;
+        border-radius: 10px;
+        box-shadow: 0 0 10px #aaa;
+    }
+    .temp {
+        font-size: 28px;
+        font-weight: bold;
+        color: #0066cc;
+    }
+    button {
+        margin-top: 20px;
+        padding: 12px;
+        background: #0066cc;
+        color: white;
+        border: none;
+        border-radius: 5px;
+        font-size: 16px;
+        cursor: pointer;
+    }
+</style>
+</head><body><h1>Monitoreo de Temperaturas BLE</h1><button onclick="connectBLE()">Conectar al ESP32</button>
+
+<div class="sensor-box">
+    <p><strong>Sensor 1:</strong> <span id="s1" class="temp">--</span> °C</p>
+    <p><strong>Sensor 2:</strong> <span id="s2" class="temp">--</span> °C</p>
+    <p><strong>Sensor 3:</strong> <span id="s3" class="temp">--</span> °C</p>
+    <p><strong>Sensor 4:</strong> <span id="s4" class="temp">--</span> °C</p>
+</div><script>
+// UUIDs del ESP32 (los mismos que tu código)
+const SERVICE_UUID        = "4fafc201-1fb5-459e-8fcc-c5c9c331914b";
+const CHARACTERISTIC_UUID = "beb5483e-36e1-4688-b7f5-ea07361b26a8";
+
+let characteristic;
+
+async function connectBLE() {
+    try {
+        console.log("Solicitando dispositivo BLE...");
+
+        const device = await navigator.bluetooth.requestDevice({
+            filters: [{ name: "TUVN_Termometros" }],
+            optionalServices: [SERVICE_UUID]
+        });
+
+        const server = await device.gatt.connect();
+        const service = await server.getPrimaryService(SERVICE_UUID);
+        characteristic = await service.getCharacteristic(CHARACTERISTIC_UUID);
+
+        await characteristic.startNotifications();
+        characteristic.addEventListener("characteristicvaluechanged", onRead);
+
+        alert("Conectado correctamente al ESP32");
+    } 
+    catch (error) {
+        alert("Error de conexión: revisa que el ESP32 esté encendido y cerca.");
+        console.error(error);
+    }
+}
+
+function onRead(event) {
+    let value = new TextDecoder().decode(event.target.value);
+    console.log("Recibido:", value);
+
+    try {
+        const data = JSON.parse(value);
+
+        document.getElementById("s1").textContent = data.s1;
+        document.getElementById("s2").textContent = data.s2;
+        document.getElementById("s3").textContent = data.s3;
+        document.getElementById("s4").textContent = data.s4;
+    } 
+    catch (e) {
+        console.error("Error leyendo JSON:", e);
+    }
+}
+</script></body>
+</html>
